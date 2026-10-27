@@ -2,10 +2,9 @@
 
 Handoff for the serial switch-nex registry integration. This repo is not
 edited into switch-nex here; the registrar copies this spec into
-`cmd/switch-nexd/main.go` (registry). Patched-client profile (see
-`tools/astro-key/`): the production key is unrecoverable statically, so
-consoles run the `openpak_astro_key` patch and the title serves them with
-an empty access key.
+`cmd/switch-nexd/main.go` (registry). Production pair (the paks are
+plaintext; the earlier `tools/astro-key/` patched-client profile is
+retired and its patch set superseded).
 
 Wire facts sourced from `scratch/decompile-astroneer/RECON.md` and
 `scratch/decompile-astroneer/findings.json` (see [protocol.md](protocol.md)).
@@ -38,28 +37,32 @@ NATCheck, Health, Monitoring.
 Explicitly NOT in the client: DataStore, Utility, Messaging, Subscriber —
 the title entry must not enable them.
 
-## Keys (patched-client profile, TODO-KEY closed 2026-10-27)
+## Keys (production pair, TODO-KEY closed 2026-10-27)
 
-Native analysis (update main, build `35DD08…`) proved the production pair
-unrecoverable statically: both values are `FConfig::GetString` reads from
-`[/Script/SwitchRuntimeSettings]` (`GameServerId` at code ref `0xfe3d20`,
-`GameServerAccessKey` at `0x10292f8`), with no default literals — they live
-only in the AES-encrypted pak, and no UE4 pak/AES key strings exist in the
-binary. Consoles therefore run the `openpak_astro_key` patch
-(`tools/astro-key/`, owner-approved 2026-10-27):
+Native analysis (update main, build `35DD08…`) showed both values are
+`FConfig::GetString` reads from `[/Script/SwitchRuntimeSettings]`
+(`GameServerId` at code ref `0xfe3d20`, `GameServerAccessKey` at
+`0x10292f8`), with no default literals. The paks were first thought
+AES-encrypted; they are fully plaintext (0 encrypted entries,
+index-SHA1 verified), so the values read straight out of
+`BaseSwitchEngine.ini`, identical in base v0 and update v2293760:
 
 | Item | Value |
 | --- | --- |
-| NEX access key | `""` (empty). The patch renames the ini key so the read misses and the client takes its guarded empty path. Server runs the same empty key (`risk-of-rain-returns` precedent). |
-| NEX game server ID | `0xA57` (routing only). The patch pins the login SNI to `ga57-lp1.s.n.srv.nintendo.net`; the real ini ID is never validated server-side and flows through untouched. |
+| NEX access key | `18dbde6c` |
+| NEX game server ID | `2EE4D000` (787480576; derived SNI `g2ee4d000-lp1`) |
 | NEX version | ~4.6.5 still UNCONFIRMED (no banner in binary); entry uses the pre-5.19 legacy Pia shape like the other unmeasured NEX 4.6.x peers. |
-| PlayFab TitleId | Still TODO-KEY (AES pak). No client patch needed: `*.playfabapi.com` already routes to us and the shim answers TitleId-agnostically. |
-| Photon AppIds | Still TODO-KEY; no Photon client linked, realtime path TBD at runtime. |
+| PlayFab TitleId | `5EA1` (recovered from update `DefaultEngine.ini`; secret stays scratch-only, never published). No client patch needed: the daemon answers TitleId-agnostically. |
+| Realtime | `NEXNetDriver` (NEX PRUDP, not Photon); no net encryption; MaxPlayers 8/16. |
+
+History: the `tools/astro-key/` patched-client profile (empty key,
+fixed SNI `ga57-lp1`) served before the plaintext finding; its patch
+set is superseded and the `ga57-lp1` router retired.
 
 ## Registry entry (landed in switch-nex)
 
 ```go
-{"astroneer", 23180, "", func(e *protocols.Env) {
+{"astroneer", 23180, "18dbde6c", func(e *protocols.Env) {
     e.StationScheme = "prudps"
     e.Pia = protocols.LegacyPia()
     e.Match = protocols.NewMatchmakingStore()
