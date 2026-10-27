@@ -14,7 +14,7 @@ func loadFlags() *Config {
 		"plain HTTP listen address, behind the TLS terminator (env ASTRONEER_HTTP_ADDR)")
 	flag.StringVar(&cfg.HealthAddr, "health-addr", envOr("ASTRONEER_HEALTH_ADDR", ":23561"),
 		"health listen address (env ASTRONEER_HEALTH_ADDR)")
-	flag.StringVar(&cfg.NexBase, "nex-base", envOr("ASTRONEER_NEX_BASE", "22200"),
+	flag.StringVar(&cfg.NexBase, "nex-base", envOr("ASTRONEER_NEX_BASE", "23180"),
 		"switch-nex NEX port base for this title (env ASTRONEER_NEX_BASE)")
 	flag.StringVar(&cfg.NexHost, "nex-host", envOr("ASTRONEER_NEX_HOST", "127.0.0.1"),
 		"switch-nex host the console dials (env ASTRONEER_NEX_HOST)")

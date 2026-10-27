@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1
 # ASTRONEER's edge service for the Switch build (0100E63013E60000).
 # Plain HTTP on 23560 behind the TLS terminator; health on 23561.
-# NEX itself is served by switch-nex (port base 22200); PlayFab by the playfab shim.
+# NEX itself is served by switch-nex (port base 23180); PlayFab by this daemon.
 FROM --platform=$BUILDPLATFORM golang:1.26-alpine AS build
 ARG TARGETOS TARGETARCH
 WORKDIR /src
