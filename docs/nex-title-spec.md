@@ -2,8 +2,10 @@
 
 Handoff for the serial switch-nex registry integration. This repo is not
 edited into switch-nex here; the registrar copies this spec into
-`cmd/switch-nexd/main.go` (registry) and `titles/<slug>/` once the TODO-KEY
-items resolve.
+`cmd/switch-nexd/main.go` (registry). Patched-client profile (see
+`tools/astro-key/`): the production key is unrecoverable statically, so
+consoles run the `openpak_astro_key` patch and the title serves them with
+an empty access key.
 
 Wire facts sourced from `scratch/decompile-astroneer/RECON.md` and
 `scratch/decompile-astroneer/findings.json` (see [protocol.md](protocol.md)).
@@ -20,13 +22,11 @@ Wire facts sourced from `scratch/decompile-astroneer/RECON.md` and
 
 ## Port-base request
 
-- Requested base: `22200` (auth=22200, secure=22201, healthz=22202).
-- Rationale: registry in `switch-nex/cmd/switch-nexd/main.go` already assigns
-  22110 (mario-party-superstars), 22120 reserved (MHGU), 22130
-  (mario-golf-super-rush), 22140 (arms), 22150 (mario-kart-8-deluxe), 22160
-  (super-mario-bros-35), 22170 (mario-tennis-aces), 22180
-  (animal-crossing-new-horizons), 22190 (luigis-mansion-3). 22200 is the next
-  free base in the +10 stride.
+- Requested base: `23180` (auth=23180, secure=23181, healthz=23182) — next
+  free in the 231xx third-party batch after lethal-league-blaze (23170);
+  verified free of the registry on 2026-10-27. (First pick 22200 was
+  already bound on the production host by a non-NEX title outside the
+  registry survey, the same collision class as Gang Beasts' 22210.)
 
 ## Protocol set (client-verified present)
 
@@ -38,22 +38,38 @@ NATCheck, Health, Monitoring.
 Explicitly NOT in the client: DataStore, Utility, Messaging, Subscriber —
 the title entry must not enable them.
 
-## Outstanding keys (TODO-KEY)
+## Keys (patched-client profile, TODO-KEY closed 2026-10-27)
 
-| Item | Status |
+Native analysis (update main, build `35DD08…`) proved the production pair
+unrecoverable statically: both values are `FConfig::GetString` reads from
+`[/Script/SwitchRuntimeSettings]` (`GameServerId` at code ref `0xfe3d20`,
+`GameServerAccessKey` at `0x10292f8`), with no default literals — they live
+only in the AES-encrypted pak, and no UE4 pak/AES key strings exist in the
+binary. Consoles therefore run the `openpak_astro_key` patch
+(`tools/astro-key/`, owner-approved 2026-10-27):
+
+| Item | Value |
 | --- | --- |
-| NEX access key (Kerberos password for this title) | TODO-KEY: not in binary strings; recover via Ghidra on `main.dec` (StationURL / game-server-ID path) |
-| NEX game server ID | TODO-KEY: runtime/config value, same recovery path |
-| NEX server URL / StationURL | TODO-KEY: same recovery path |
-| NEX version confirmation (~4.6.5?) | TODO-KEY: confirm via `VersionInfo::V1..V4` before pinning protocol behaviour |
-| PlayFab TitleId | TODO-KEY: inside AES-encrypted `Astro-Switch.pak` cooked config; needs pak AES key (Ghidra) then `DefaultEngine.ini`; registers a tenant in the playfab shim (`PLAYFAB_ASTRONEER_TITLE` pattern) |
-| Photon AppIds (`PhotonRealtimeAppId`, `PhotonChatAppId`, `PhotonTurnbasedAppId`) | TODO-KEY: PlayFab-mediated names only; realtime transport path (UE4 replication vs NEX) still TBD via Ghidra/CPU trace |
+| NEX access key | `""` (empty). The patch renames the ini key so the read misses and the client takes its guarded empty path. Server runs the same empty key (`risk-of-rain-returns` precedent). |
+| NEX game server ID | `0xA57` (routing only). The patch pins the login SNI to `ga57-lp1.s.n.srv.nintendo.net`; the real ini ID is never validated server-side and flows through untouched. |
+| NEX version | ~4.6.5 still UNCONFIRMED (no banner in binary); entry uses the pre-5.19 legacy Pia shape like the other unmeasured NEX 4.6.x peers. |
+| PlayFab TitleId | Still TODO-KEY (AES pak). No client patch needed: `*.playfabapi.com` already routes to us and the shim answers TitleId-agnostically. |
+| Photon AppIds | Still TODO-KEY; no Photon client linked, realtime path TBD at runtime. |
 
-## Registrar checklist
+## Registry entry (landed in switch-nex)
 
-1. Confirm NEX version via Ghidra (`VersionInfo::V1..V4`).
-2. Recover StationURL / game server ID / access key; fill TODO-KEY rows.
-3. Add registry entry at base 22200 with the protocol set above (no DataStore).
-4. Add `titles/astroneer/` README shadowing the mario-kart-8-deluxe layout.
-5. Decrypt pak → `DefaultEngine.ini` → PlayFab TitleId → shim tenant; set
-   `ASTRONEER_PLAYFAB_URL` on this repo's daemon.
+```go
+{"astroneer", 23180, "", func(e *protocols.Env) {
+    e.StationScheme = "prudps"
+    e.Pia = protocols.LegacyPia()
+    e.Match = protocols.NewMatchmakingStore()
+    e.FinalizeCreateSession = true
+    e.JoinEchoSession = true
+    e.JoinRecapParticipate = true
+}}
+```
+
+Matchmaking set only; Ranking2/Notification/NAT-Traversal stay unregistered
+until the first boot's NotImplemented log. No DataStore/Utility/Messaging/
+Subscriber (not in the client). Provenance:
+`switch-nex/docs/astroneer.md`.
