@@ -8,9 +8,12 @@
 //	(see docs/nex-title-spec.md). This daemon carries no NEX transport;
 //	it only reports the configured NEX station URL on /readyz.
 //	PlayFab UE4 Client API (<TitleId>.playfabapi.com) — identity and
-//	backend calls: served by platforms/switch/games/playfab with a
-//	per-title tenant (PLAYFAB_*_TITLE pattern). Until the TitleId is
-//	recovered from the game's encrypted pak, /playfab/* answers 501.
+//	backend calls: served locally and TitleId-agnostically, since the
+//	real TitleId is still inside the game's encrypted pak. Any Host
+//	subdomain and any TitleId field are accepted; both are only logged
+//	(the capture for TitleId recovery). Point ASTRONEER_PLAYFAB_URL at
+//	the shared shim after the TitleId is recovered and the shim carries
+//	this title's tenant.
 //
 // The contract was read out of the Switch executable; see docs/protocol.md.
 package main
@@ -46,7 +49,11 @@ func main() {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/healthz", func(w http.ResponseWriter, _ *http.Request) { io.WriteString(w, "ok\n") })
 	mux.HandleFunc("/readyz", s.readyz)
+	// The TLS terminator forwards the game's native PlayFab paths; the
+	// /playfab/ prefix is this daemon's historic alias for the same API.
 	mux.Handle("/playfab/", s.playfab)
+	mux.Handle("/Client/", s.playfab)
+	mux.Handle("/Authentication/", s.playfab)
 	log.Printf("[astroneer] serving HTTP on %s (title %s, nex %s:%s)", cfg.Addr, cfg.TitleID, cfg.NexHost, cfg.NexBase)
 	log.Fatal(http.ListenAndServe(cfg.Addr, mux))
 }
@@ -58,15 +65,16 @@ type server struct {
 
 // readyz reports whether the game's two middleware backends are configured.
 // NEX is ready when switch-nex serves this title's port base; PlayFab is
-// ready when the shim tenant (TitleId) exists and its URL is configured.
+// served locally and TitleId-agnostically unless ASTRONEER_PLAYFAB_URL
+// points at the shared shim (post-TitleId-recovery).
 func (s *server) readyz(w http.ResponseWriter, _ *http.Request) {
 	nex := "unregistered"
 	if s.cfg.NexHost != "" && s.cfg.NexBase != "" {
 		nex = fmt.Sprintf("switch-nex %s:%s (auth=base secure=base+1)", s.cfg.NexHost, s.cfg.NexBase)
 	}
-	pf := "unconfigured"
+	pf := "local titleid-agnostic"
 	if s.playfab.url != "" {
-		pf = s.playfab.url
+		pf = "proxy " + s.playfab.url
 	}
 	w.Header().Set("Content-Type", "text/plain")
 	fmt.Fprintf(w, "title=%s\nnex=%s\nplayfab=%s\n", s.cfg.TitleID, nex, pf)

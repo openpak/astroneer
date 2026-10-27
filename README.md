@@ -15,8 +15,8 @@ OpenPak's ASTRONEER Server.
 | Host | What | Served by |
 | --- | --- | --- |
 | NEX (PRUDP) | Matchmaking, NAT traversal, ranking | [`switch-nex`](https://github.com/openpak/switch-nex) (title registration pending, see [NEX title spec](docs/nex-title-spec.md)) |
-| `<TitleId>.playfabapi.com` | PlayFab UE4 Client API (identity, backend calls) | [`playfab`](https://github.com/openpak/playfab) (tenant pending TitleId recovery) |
-| local | Edge service: health, readiness, PlayFab stub | this repo (`astroneerd`) |
+| `<TitleId>.playfabapi.com` | PlayFab UE4 Client API (identity, backend calls) | this repo (`astroneerd`, TitleId-agnostic; [`playfab`](https://github.com/openpak/playfab) proxy after TitleId recovery) |
+| local | Edge service: health, readiness, PlayFab API | this repo (`astroneerd`) |
 
 ## Run
 
@@ -31,7 +31,7 @@ GOWORK=off go build -o astroneerd ./cmd/astroneerd
 | `-health-addr` / `ASTRONEER_HEALTH_ADDR` | health listen address (`:23561`) |
 | `-nex-base` / `ASTRONEER_NEX_BASE` | switch-nex NEX port base for this title (`22200`) |
 | `-nex-host` / `ASTRONEER_NEX_HOST` | switch-nex host the console dials |
-| `-playfab-url` / `ASTRONEER_PLAYFAB_URL` | playfab shim base URL (empty until the tenant exists) |
+| `-playfab-url` / `ASTRONEER_PLAYFAB_URL` | playfab shim base URL (empty serves PlayFab locally, TitleId-agnostically) |
 | `-title-id` / `ASTRONEER_TITLE_ID` | Switch title ID (`0100E63013E60000`) |
 
 ## Docs

@@ -54,10 +54,15 @@ for the registration handoff.
   and no TitleId literal is in the binary — it lives in cooked config inside
   the AES-encrypted pak (RECON.md "Engine / middleware verdict" and
   "RomFS / pak", findings.json `middleware.playfab.title_id_literal=false`).
-- The shared shim (`platforms/switch/games/playfab`) serves tenants per
-  title: one PlayFab TitleId plus the Switch title ID it is scoped to
-  (the `PLAYFAB_DOOM_TITLE` / `PLAYFAB_DOOM_APP` pattern in the shim's
-  `titles.go`). ASTRONEER joins the same way once its TitleId is recovered.
+- `astroneerd` answers the Client API TitleId-agnostically: any Host
+  subdomain and any `TitleId` body value are accepted (both are only
+  logged, as the capture for TitleId recovery). Identity is stateless —
+  PlayFabId/EntityId derive from the presented credential — and session /
+  entity tokens are HMAC-signed with a per-boot key. Pointing
+  `ASTRONEER_PLAYFAB_URL` at the shared shim
+  (`platforms/switch/games/playfab`) switches to reverse-proxy mode, which
+  is only useful after the TitleId is recovered and the shim carries this
+  title's tenant.
 
 ## What is not here
 
@@ -77,7 +82,12 @@ for the registration handoff.
 `astroneerd` is the edge service; the game backends live elsewhere:
 
 - `GET /healthz` — `ok` (both listeners).
-- `GET /readyz` — title, NEX base, and PlayFab tenant state.
-- `/playfab/*` — PlayFab middleware stub: 501 until
-  `ASTRONEER_PLAYFAB_URL` points at a shim carrying this title's tenant,
-  then reverse-proxied to the shim's `/Client/*` API.
+- `GET /readyz` — title, NEX base, and PlayFab mode (local
+  TitleId-agnostic, or shim proxy URL).
+- `/Client/*`, `/Authentication/*` — PlayFab API served locally: logins
+  (`LoginWithNintendoServiceAccount`, `LoginWithNintendoSwitchDeviceId`,
+  `LoginWithCustomID`), `GetPlayFabIDsFromNintendoSwitchDeviceIds`,
+  `GetPhotonAuthenticationToken`, `GetEntityToken`, title/user data and
+  account reads; anything else in those families succeeds with empty data
+  and is logged as unimplemented. `/playfab/*` is an alias for the same
+  API (operation with or without the `/Client` segment).

@@ -19,7 +19,7 @@ func loadFlags() *Config {
 	flag.StringVar(&cfg.NexHost, "nex-host", envOr("ASTRONEER_NEX_HOST", "127.0.0.1"),
 		"switch-nex host the console dials (env ASTRONEER_NEX_HOST)")
 	flag.StringVar(&cfg.PlayFabURL, "playfab-url", envOr("ASTRONEER_PLAYFAB_URL", ""),
-		"playfab shim base URL, empty until the TitleId tenant exists (env ASTRONEER_PLAYFAB_URL)")
+		"playfab shim base URL, empty serves PlayFab locally TitleId-agnostically (env ASTRONEER_PLAYFAB_URL)")
 	flag.StringVar(&cfg.TitleID, "title-id", envOr("ASTRONEER_TITLE_ID", "0100E63013E60000"),
 		"Switch title ID this service answers for (env ASTRONEER_TITLE_ID)")
 	flag.Parse()
