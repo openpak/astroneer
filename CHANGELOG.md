@@ -1,5 +1,9 @@
 # Changelog — astroneer
 
+## Unreleased: release workflow and container build
+
+- Add a release workflow publishing the image to ghcr.io on v*.*.* tags.
+
 ## v0.2.0 — unreleased
 
 - `astroneerd`: PlayFab API is now TitleId-agnostic. The 501 stub is gone:
