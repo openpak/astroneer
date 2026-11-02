@@ -23,7 +23,7 @@ Wire facts sourced from `scratch/decompile-astroneer/RECON.md` and
 
 - Requested base: `23180` (auth=23180, secure=23181, healthz=23182) — next
   free in the 231xx third-party batch after lethal-league-blaze (23170);
-  verified free of the registry on 2026-10-27. (First pick 22200 was
+  verified free of the registry. (First pick 22200 was
   already bound on the production host by a non-NEX title outside the
   registry survey, the same collision class as Gang Beasts' 22210.)
 
@@ -37,7 +37,7 @@ NATCheck, Health, Monitoring.
 Explicitly NOT in the client: DataStore, Utility, Messaging, Subscriber —
 the title entry must not enable them.
 
-## Keys (production pair, TODO-KEY closed 2026-10-27)
+## Keys (production pair)
 
 Native analysis (update main, build `35DD08…`) showed both values are
 `FConfig::GetString` reads from `[/Script/SwitchRuntimeSettings]`
